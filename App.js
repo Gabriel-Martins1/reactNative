@@ -1,24 +1,61 @@
 import { StatusBar } from 'expo-status-bar';
-import { useEffect, useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { useState, useRef } from 'react';
+import { StyleSheet, Text, View, Button } from 'react-native';
 import { Accelerometer } from 'expo-sensors';
+
+const calcularMaiorEixo = (leitura) => {
+  const absX = Math.abs(leitura.x);
+  const absY = Math.abs(leitura.y);
+  const absZ = Math.abs(leitura.z);
+
+  if (absX >= absY && absX >= absZ) return 'X';
+  if (absY >= absX && absY >= absZ) return 'Y';
+  return 'Z';
+};
 
 export default function App() {
   const [leitura, setLeitura] = useState({ x: 0, y: 0, z: 0 });
+  const [ativo, setAtivo] = useState(false);
+  const inscricaoRef = useRef(null);
 
-  useEffect(() => {
+  const iniciarLeitura = () => {
     Accelerometer.setUpdateInterval(50);
+    inscricaoRef.current = Accelerometer.addListener(setLeitura);
+    setAtivo(true);
+  };
 
-    const inscricao = Accelerometer.addListener(setLeitura);
-    return () => inscricao.remove();
-  }, []);
+  const pararLeitura = () => {
+    if (inscricaoRef.current) {
+      inscricaoRef.current.remove();
+      inscricaoRef.current = null;
+    }
+    setAtivo(false);
+  };
+
+  const alternarLeitura = () => {
+    ativo ? pararLeitura() : iniciarLeitura();
+  };
+
+  const maiorEixo = calcularMaiorEixo(leitura);
 
   return (
     <View style={styles.container}>
-      <Text style={styles.titulo}>Sensor ativo</Text>
-      <Text style={styles.eixoX}>Eixo X: {leitura.x.toFixed(2)}</Text>
-      <Text style={styles.eixoY}>Eixo Y: {leitura.y.toFixed(2)}</Text>
-      <Text style={styles.eixoZ}>Eixo Z: {leitura.z.toFixed(2)}</Text>
+      <Text style={styles.titulo}>Sensor {ativo ? 'ativo' : 'pausado'}</Text>
+
+      <Text style={[styles.eixoX, maiorEixo === 'X' && styles.destaque]}>
+        Eixo X: {leitura.x.toFixed(2)}
+      </Text>
+      <Text style={[styles.eixoY, maiorEixo === 'Y' && styles.destaque]}>
+        Eixo Y: {leitura.y.toFixed(2)}
+      </Text>
+      <Text style={[styles.eixoZ, maiorEixo === 'Z' && styles.destaque]}>
+        Eixo Z: {leitura.z.toFixed(2)}
+      </Text>
+
+      <Text style={styles.indicador}>Maior força no eixo: {maiorEixo}</Text>
+
+      <Button title={ativo ? 'Parar' : 'Retomar'} onPress={alternarLeitura} />
+
       <StatusBar style="auto" />
     </View>
   );
@@ -30,4 +67,6 @@ const styles = StyleSheet.create({
   eixoX: { fontSize: 20, color: '#00F0FF' },
   eixoY: { fontSize: 20, color: '#FF003C' },
   eixoZ: { fontSize: 20, color: '#FFF000' },
+  destaque: { fontWeight: 'bold', textDecorationLine: 'underline' },
+  indicador: { fontSize: 18, marginTop: 15, marginBottom: 15, fontStyle: 'italic' },
 });
